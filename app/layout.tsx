@@ -3,6 +3,8 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppLayout } from "@/components/app-layout";
+import { Toaster } from "@/components/ui/sonner";
+import { AutoSync } from "@/components/auto-sync";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -46,6 +48,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AppLayout>{children}</AppLayout>
+          <Toaster />
+          <AutoSync />
         </ThemeProvider>
       </body>
     </html>
