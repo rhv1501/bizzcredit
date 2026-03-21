@@ -49,6 +49,27 @@ export async function syncToSheets(): Promise<{ synced: number }> {
       await db.deletedSyncs.bulkDelete(allDeleted.map(d => d.id));
     }
 
+    // Process pulled data to remove locally deleted/missing records
+    if (data.pulledCustomers) {
+      const pulledCustomerIds = new Set(data.pulledCustomers.map((c: any) => c.id));
+      for (const localCust of allCustomers) {
+        // Safe to delete if it's missing from sheets AND is not unsynced locally right now
+        if (!pulledCustomerIds.has(localCust.id) && !unsyncedCustomerIds.has(localCust.id)) {
+          await db.customers.delete(localCust.id);
+        }
+      }
+    }
+
+    if (data.pulledSales) {
+      const pulledSaleIds = new Set(data.pulledSales.map((s: any) => s.id));
+      for (const localSale of allSales) {
+        // Safe to delete if it's considered fully synced locally but missing from sheets
+        if (localSale.synced && !pulledSaleIds.has(localSale.id)) {
+          await db.sales.delete(localSale.id);
+        }
+      }
+    }
+
     // Merge pulled customers (overwrite is safe for flat objects)
     if (data.pulledCustomers && data.pulledCustomers.length > 0) {
       await db.customers.bulkPut(data.pulledCustomers);
