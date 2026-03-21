@@ -16,6 +16,7 @@ export interface Customer {
   address?: string;
   createdAt: string;
   updatedAt: string;
+  synced?: boolean;
 }
 
 // A single credit entry for a customer

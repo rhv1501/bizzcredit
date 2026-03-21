@@ -5,9 +5,10 @@ import { db } from "@/lib/db";
  * Returns { synced: number } or throws on API error.
  */
 export async function syncToSheets(): Promise<{ synced: number }> {
-  const [allCustomers, allSales] = await Promise.all([
+  const [allCustomers, allSales, allDeleted] = await Promise.all([
     db.customers.toArray(),
     db.sales.toArray(),
+    db.deletedSyncs.toArray(),
   ]);
 
   const unsyncedSales = allSales.filter((s) => s.synced === false);
@@ -17,10 +18,18 @@ export async function syncToSheets(): Promise<{ synced: number }> {
     unsyncedCustomerIds.has(c.id)
   );
 
+  const deletedCustomerIds = allDeleted.filter(d => d.type === 'customer').map(d => d.id);
+  const deletedSaleIds = allDeleted.filter(d => d.type === 'sale').map(d => d.id);
+
   const res = await fetch("/api/sync", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ customers: unsyncedCustomers, sales: unsyncedSales }),
+    body: JSON.stringify({ 
+      customers: unsyncedCustomers, 
+      sales: unsyncedSales,
+      deletedCustomerIds,
+      deletedSaleIds
+    }),
   });
 
   const data = await res.json();
@@ -29,10 +38,15 @@ export async function syncToSheets(): Promise<{ synced: number }> {
   }
 
   // Mark synced in local DB and merge pulled data
-  await db.transaction("rw", db.customers, db.sales, async () => {
+  await db.transaction("rw", db.customers, db.sales, db.deletedSyncs, async () => {
     // Mark pushed sales as synced
     for (const sale of unsyncedSales) {
       await db.sales.update(sale.id, { synced: true });
+    }
+
+    // Clear pushed deletions
+    if (allDeleted.length > 0) {
+      await db.deletedSyncs.bulkDelete(allDeleted.map(d => d.id));
     }
 
     // Merge pulled customers (overwrite is safe for flat objects)

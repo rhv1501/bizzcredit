@@ -163,6 +163,7 @@ function AddCreditForm() {
       if (selectedCustomer) {
         customerId = selectedCustomer.id;
         await db.customers.update(customerId, {
+          synced: false,
           updatedAt: new Date().toISOString(),
         });
       } else {
@@ -175,6 +176,7 @@ function AddCreditForm() {
           email: values.customerEmail || undefined,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          synced: false,
         });
       }
 

@@ -14,7 +14,7 @@ const CREDIT_HEADERS = [
 
 export async function POST(request: Request) {
   try {
-    const { customers, sales } = await request.json();
+    const { customers, sales, deletedCustomerIds, deletedSaleIds } = await request.json();
 
     if (
       !process.env.GOOGLE_CLIENT_EMAIL ||
@@ -38,7 +38,6 @@ export async function POST(request: Request) {
     const sheets = google.sheets({ version: "v4", auth });
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
 
-    // Helper: get current row count of a sheet
     const getRowCount = async (sheetName: string) => {
       const res = await sheets.spreadsheets.values.get({
         spreadsheetId,
@@ -61,40 +60,7 @@ export async function POST(request: Request) {
       });
     };
 
-    // ── Customers sheet ──────────────────────────────────────────────────────
-    if (customers && customers.length > 0) {
-      const rows = customers.map((c: any) => [
-        c.id,
-        c.name,
-        c.phone || "",
-        c.email || "",
-        c.createdAt,
-        c.updatedAt,
-      ]);
-      await appendRows("Customer", CUSTOMER_HEADERS, rows);
-    }
-
-    // ── Credit sheet ──────────────────────────────────────────────────────────
-    if (sales && sales.length > 0) {
-      const rows = sales.map((s: any) => [
-        s.id,
-        s.customerId,
-        s.customerName,
-        s.customerPhone || "",
-        s.date,
-        s.description || "",
-        s.totalAmount,
-        s.amountPaid,
-        s.balance,
-        s.status,
-        s.payments?.map((p: any) => `${p.method}: ₹${p.amount}`).join("; ") || "",
-        s.notes || "",
-        s.updatedAt,
-      ]);
-      await appendRows("Credit", CREDIT_HEADERS, rows);
-    }
-
-    // ── Pull Data from Sheets ────────────────────────────────────────────────
+    // Helper: get rows
     const getRows = async (sheetName: string) => {
       try {
         const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${sheetName}!A:Z` });
@@ -104,6 +70,134 @@ export async function POST(request: Request) {
       }
     };
 
+    // ── Process Deletions ──────────────────────────────────────────────────
+    const requests: any[] = [];
+    
+    if ((deletedCustomerIds && deletedCustomerIds.length > 0) || (deletedSaleIds && deletedSaleIds.length > 0)) {
+      const meta = await sheets.spreadsheets.get({ spreadsheetId });
+      const customerSheetId = meta.data.sheets?.find(s => s.properties?.title === "Customer")?.properties?.sheetId;
+      const creditSheetId = meta.data.sheets?.find(s => s.properties?.title === "Credit")?.properties?.sheetId;
+
+      if (deletedCustomerIds && deletedCustomerIds.length > 0 && customerSheetId !== undefined) {
+        const currentCustomers = await getRows("Customer");
+        const rowsToDelete: number[] = [];
+        for (let i = 1; i < currentCustomers.length; i++) {
+          if (deletedCustomerIds.includes(currentCustomers[i][0])) {
+            rowsToDelete.push(i);
+          }
+        }
+        rowsToDelete.sort((a, b) => b - a);
+        for (const rowIndex of rowsToDelete) {
+          requests.push({
+            deleteDimension: {
+              range: { sheetId: customerSheetId, dimension: "ROWS", startIndex: rowIndex, endIndex: rowIndex + 1 }
+            }
+          });
+        }
+      }
+
+      if (deletedSaleIds && deletedSaleIds.length > 0 && creditSheetId !== undefined) {
+        const currentCredits = await getRows("Credit");
+        const rowsToDelete: number[] = [];
+        for (let i = 1; i < currentCredits.length; i++) {
+          if (deletedSaleIds.includes(currentCredits[i][0])) {
+            rowsToDelete.push(i);
+          }
+        }
+        rowsToDelete.sort((a, b) => b - a);
+        for (const rowIndex of rowsToDelete) {
+          requests.push({
+            deleteDimension: {
+              range: { sheetId: creditSheetId, dimension: "ROWS", startIndex: rowIndex, endIndex: rowIndex + 1 }
+            }
+          });
+        }
+      }
+
+      if (requests.length > 0) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: { requests }
+        });
+      }
+    }
+
+    // ── Refetch data to get accurate row indices for Updates ────────────────
+    const currentCustomers = await getRows("Customer");
+    const currentCredits = await getRows("Credit");
+
+    const customerIdToRow = new Map<string, number>();
+    currentCustomers.forEach((row, idx) => {
+      if (row[0]) customerIdToRow.set(row[0], idx + 1);
+    });
+
+    const creditIdToRow = new Map<string, number>();
+    currentCredits.forEach((row, idx) => {
+      if (row[0]) creditIdToRow.set(row[0], idx + 1);
+    });
+
+    // ── Process Customers (Upsert) ──────────────────────────────────────────
+    const customerUpdates: any[] = [];
+    const customerAppends: any[] = [];
+
+    if (customers && customers.length > 0) {
+      customers.forEach((c: any) => {
+        const row = [
+          c.id, c.name, c.phone || "", c.email || "", c.createdAt, c.updatedAt
+        ];
+        const rowIndex = customerIdToRow.get(c.id);
+        if (rowIndex) {
+          customerUpdates.push({
+            range: `Customer!A${rowIndex}:F${rowIndex}`,
+            values: [row]
+          });
+        } else {
+          customerAppends.push(row);
+        }
+      });
+    }
+
+    // ── Process Credits (Upsert) ────────────────────────────────────────────
+    const creditUpdates: any[] = [];
+    const creditAppends: any[] = [];
+
+    if (sales && sales.length > 0) {
+      sales.forEach((s: any) => {
+        const row = [
+          s.id, s.customerId, s.customerName, s.customerPhone || "", s.date, s.description || "",
+          s.totalAmount, s.amountPaid, s.balance, s.status,
+          s.payments?.map((p: any) => `${p.method}: ₹${p.amount}`).join("; ") || "",
+          s.notes || "", s.updatedAt,
+        ];
+        const rowIndex = creditIdToRow.get(s.id);
+        if (rowIndex) {
+          creditUpdates.push({
+            range: `Credit!A${rowIndex}:M${rowIndex}`,
+            values: [row]
+          });
+        } else {
+          creditAppends.push(row);
+        }
+      });
+    }
+
+    // Execute Appends
+    if (customerAppends.length > 0) await appendRows("Customer", CUSTOMER_HEADERS, customerAppends);
+    if (creditAppends.length > 0) await appendRows("Credit", CREDIT_HEADERS, creditAppends);
+
+    // Execute Updates
+    const dataToUpdate = [...customerUpdates, ...creditUpdates];
+    if (dataToUpdate.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: "USER_ENTERED",
+          data: dataToUpdate
+        }
+      });
+    }
+
+    // ── Pull Final Data from Sheets ──────────────────────────────────────────
     const rawCustomers = await getRows("Customer");
     const rawCredits = await getRows("Credit");
 

@@ -161,6 +161,7 @@ export default function CustomerDetailPage() {
         name: editCustomer.name.trim(),
         phone: editCustomer.phone || undefined,
         email: editCustomer.email || undefined,
+        synced: false,
         updatedAt: new Date().toISOString(),
       });
       toast.success("Customer updated!");
@@ -172,6 +173,10 @@ export default function CustomerDetailPage() {
   const handleDeleteCustomer = async () => {
     try {
       const linkedCredits = await db.sales.where("customerId").equals(id).toArray();
+      const now = Date.now();
+      await Promise.all(linkedCredits.map(c => db.deletedSyncs.add({ id: c.id, type: 'sale', timestamp: now })));
+      await db.deletedSyncs.add({ id: id, type: 'customer', timestamp: now });
+
       await Promise.all(linkedCredits.map(c => db.sales.delete(c.id)));
       await db.customers.delete(id);
       toast.success("Customer and all their credits deleted.");
@@ -222,6 +227,7 @@ export default function CustomerDetailPage() {
   const handleDeleteCredit = async () => {
     if (!deleteCreditId) return;
     try {
+      await db.deletedSyncs.add({ id: deleteCreditId, type: 'sale', timestamp: Date.now() });
       await db.sales.delete(deleteCreditId);
       toast.success("Credit entry deleted.");
       setDeleteCreditId(null);
