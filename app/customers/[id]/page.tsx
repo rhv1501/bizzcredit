@@ -3,7 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { syncToSheets } from "@/lib/sync";
-import { getWhatsAppLink, generateReceiptMessage, generateReminderMessage, generatePaymentReceiptMessage } from "@/lib/messaging";
+import { getWhatsAppLink, generateReceiptMessage, generateReminderMessage, generatePaymentReceiptMessage, generateOverallReminderMessage } from "@/lib/messaging";
 import { useState } from "react";
 import { format } from "date-fns";
 import {
@@ -133,6 +133,16 @@ export default function CustomerDetailPage() {
     } catch { toast.error("Failed to record payment."); }
   };
 
+  const handleOverallReminder = () => {
+    if (!customer?.phone) {
+      toast.error("Customer phone number is missing.");
+      return;
+    }
+    const pendingCount = credits?.filter(c => c.balance > 0).length || 0;
+    const msg = generateOverallReminderMessage(customer.name, totalDue, pendingCount);
+    window.open(getWhatsAppLink(customer.phone, msg), "_blank");
+  };
+
   // ── Customer CRUD ───────────────────────────────────────────────────────
   const openEditCustomer = () => {
     if (!customer) return;
@@ -249,9 +259,19 @@ export default function CustomerDetailPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={openEditCustomer}>
             <Pencil className="h-3.5 w-3.5" /> Edit
+          </Button>
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" 
+            onClick={handleOverallReminder}
+            disabled={totalDue <= 0 || !customer.phone}
+            title={!customer.phone ? "Add a phone number to send reminders" : totalDue <= 0 ? "No pending balance to remind about" : "Send WhatsApp Reminder"}
+          >
+            <MessageSquare className="h-3.5 w-3.5" /> Send Reminder
           </Button>
           <Link href={`/add-credit?customerId=${customer.id}`}>
             <Button size="sm" className="gap-1.5">

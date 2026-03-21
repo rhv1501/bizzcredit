@@ -62,6 +62,17 @@ export function generateReminderMessage(customerName: string, credit: Sale): str
 }
 
 /**
+ * Generates an overall payment reminder message for all pending credits
+ */
+export function generateOverallReminderMessage(customerName: string, totalDue: number, pendingCount: number): string {
+  return `Hi ${customerName},\n\n` +
+    `This is a gentle reminder from BizzCredit regarding your overall pending balance.\n\n` +
+    `You have ${pendingCount} pending credit record(s).\n` +
+    `⚠️ *Total Pending Balance:* ₹${totalDue.toLocaleString("en-IN")}\n\n` +
+    `Please clear this amount at your earliest convenience. Thank you!`;
+}
+
+/**
  * Generates a receipt message when a payment is recorded against a balance
  */
 export function generatePaymentReceiptMessage(customerName: string, amountPaid: number, remainingBalance: number): string {
