@@ -6,7 +6,7 @@ const JWT_SECRET = new TextEncoder().encode(
 );
 
 // Routes that don't need authentication
-const PUBLIC_PATHS = ["/login", "/api/auth/login"];
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/webhook/sheets"];
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

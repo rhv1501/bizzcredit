@@ -9,19 +9,24 @@ export function AutoSync() {
   const isSyncing = useRef(false);
 
   useEffect(() => {
-    const doSync = async () => {
+    const doSync = async (source?: string | Event) => {
       if (isSyncing.current) return;
       if (typeof window === "undefined" || !window.navigator.onLine) return; // Only sync when online
 
       isSyncing.current = true;
+      const isSocket = typeof source === 'string' && source === 'socket';
+      const toastId = toast.loading(`Syncing... ${isSocket ? '(Real-Time)' : ''}`);
+      
       try {
         const result = await syncToSheets();
         if (result.synced > 0) {
-          toast.success(`Auto-synced ${result.synced} offline item(s) to Sheets.`);
+          toast.success(`Auto-synced ${result.synced} offline item(s) to Sheets.`, { id: toastId });
+        } else {
+          toast.success("App synced & up to date!", { id: toastId, duration: 2000 });
         }
       } catch (error: any) {
         console.error("Auto-sync error:", error);
-        toast.error("Auto-sync failed. Please check your connection.");
+        toast.error("Auto-sync failed. Please check your connection.", { id: toastId });
       } finally {
         isSyncing.current = false;
       }
@@ -50,7 +55,7 @@ export function AutoSync() {
       channel = pusher.subscribe('bizzcredit-sync');
       channel.bind('sheet-updated', () => {
         // Triggered instantly by Vercel when Google Sheets hits the webhook!
-        doSync();
+        doSync('socket');
       });
     }
 
