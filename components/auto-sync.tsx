@@ -4,11 +4,15 @@ import { useEffect, useRef } from "react";
 import { syncToSheets } from "@/lib/sync";
 import { toast } from "sonner";
 import Pusher from "pusher-js";
+import { usePathname } from "next/navigation";
 
 export function AutoSync() {
   const isSyncing = useRef(false);
+  const pathname = usePathname();
 
   useEffect(() => {
+    if (pathname === '/login') return;
+
     const doSync = async (source?: string | Event) => {
       if (isSyncing.current) return;
       if (typeof window === "undefined" || !window.navigator.onLine) return; // Only sync when online

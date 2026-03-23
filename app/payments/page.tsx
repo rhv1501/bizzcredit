@@ -96,24 +96,37 @@ export default function PaymentsPage() {
 
       {/* Summary chips */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="glass-card hover-lift">
-          <CardContent className="pt-6">
-            <p className="text-2xl font-bold text-red-500">₹{totalDue.toLocaleString("en-IN")}</p>
-            <p className="text-sm text-muted-foreground">Total Outstanding</p>
-          </CardContent>
-        </Card>
-        <Card className="glass-card hover-lift">
-          <CardContent className="pt-6">
-            <p className="text-2xl font-bold text-amber-500">{partialCount}</p>
-            <p className="text-sm text-muted-foreground">Partial Payments</p>
-          </CardContent>
-        </Card>
-        <Card className="glass-card hover-lift">
-          <CardContent className="pt-6">
-            <p className="text-2xl font-bold">{pendingCount}</p>
-            <p className="text-sm text-muted-foreground">Fully Pending</p>
-          </CardContent>
-        </Card>
+        {credits === undefined ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="glass-card hover-lift animate-pulse">
+              <CardContent className="pt-6">
+                <div className="h-8 bg-muted rounded w-24 mb-2"></div>
+                <div className="h-4 bg-muted rounded w-32"></div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <>
+            <Card className="glass-card hover-lift">
+              <CardContent className="pt-6">
+                <p className="text-2xl font-bold text-red-500">₹{totalDue.toLocaleString("en-IN")}</p>
+                <p className="text-sm text-muted-foreground">Total Outstanding</p>
+              </CardContent>
+            </Card>
+            <Card className="glass-card hover-lift">
+              <CardContent className="pt-6">
+                <p className="text-2xl font-bold text-amber-500">{partialCount}</p>
+                <p className="text-sm text-muted-foreground">Partial Payments</p>
+              </CardContent>
+            </Card>
+            <Card className="glass-card hover-lift">
+              <CardContent className="pt-6">
+                <p className="text-2xl font-bold">{pendingCount}</p>
+                <p className="text-sm text-muted-foreground">Fully Pending</p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       <Card className="glass-card">
@@ -136,7 +149,87 @@ export default function PaymentsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border overflow-x-auto">
+          {/* Mobile View */}
+          <div className="grid gap-4 md:hidden">
+            {credits === undefined ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="p-4 border rounded-lg bg-card animate-pulse">
+                  <div className="h-6 bg-muted rounded w-1/3 mb-3"></div>
+                  <div className="space-y-2 mb-4 px-2">
+                    <div className="h-4 bg-muted rounded w-2/3"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <div className="h-10 w-10 bg-muted rounded-md"></div>
+                    <div className="h-10 flex-1 bg-muted rounded-md"></div>
+                    <div className="h-10 w-10 bg-muted rounded-md"></div>
+                  </div>
+                </div>
+              ))
+            ) : !filtered || filtered.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground border rounded-lg">
+                🎉 No pending payments. All dues cleared!
+              </div>
+            ) : (
+              filtered.map((credit) => (
+                <div key={credit.id} className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">{credit.customerName}</h3>
+                      <p className="text-sm text-muted-foreground">{credit.customerPhone || "—"}</p>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      credit.status === "Partial"
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
+                        : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
+                    }`}>
+                      {credit.status}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                    <div>
+                      <p className="text-muted-foreground">Date</p>
+                      <p className="font-medium">{format(new Date(credit.date), "dd MMM yyyy")}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Total</p>
+                      <p className="font-medium">₹{credit.totalAmount.toLocaleString("en-IN")}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Balance Due</p>
+                      <p className="font-bold text-red-500 text-lg">₹{credit.balance.toLocaleString("en-IN")}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 justify-end">
+                    {credit.customerPhone && (
+                      <Button 
+                        size="icon" 
+                        variant="outline" 
+                        className="h-10 w-10 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                        onClick={() => {
+                          const msg = generateReminderMessage(credit.customerName, credit);
+                          window.open(getWhatsAppLink(credit.customerPhone!, msg), "_blank");
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button variant="outline" className="flex-1" onClick={() => openPayDialog(credit)}>
+                      <Plus className="mr-2 h-4 w-4" /> Record Payment
+                    </Button>
+                    <Link href={`/customers/${credit.customerId}`}>
+                      <Button size="icon" variant="ghost" className="h-10 w-10 bg-muted/50">
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop View */}
+          <div className="hidden md:block rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -150,7 +243,22 @@ export default function PaymentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {!filtered || filtered.length === 0 ? (
+                {credits === undefined ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i} className="animate-pulse">
+                      <TableCell>
+                        <div className="h-4 bg-muted rounded w-3/4 mb-1"></div>
+                        <div className="h-3 bg-muted rounded w-1/2"></div>
+                      </TableCell>
+                      <TableCell><div className="h-4 bg-muted rounded w-20"></div></TableCell>
+                      <TableCell className="hidden sm:table-cell"><div className="h-4 bg-muted rounded w-24"></div></TableCell>
+                      <TableCell><div className="h-4 bg-muted rounded w-16"></div></TableCell>
+                      <TableCell><div className="h-4 bg-muted rounded w-16"></div></TableCell>
+                      <TableCell><div className="h-6 bg-muted rounded-full w-16"></div></TableCell>
+                      <TableCell><div className="h-8 bg-muted rounded w-24 ml-auto"></div></TableCell>
+                    </TableRow>
+                  ))
+                ) : !filtered || filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                       🎉 No pending payments. All dues cleared!
@@ -193,26 +301,26 @@ export default function PaymentsPage() {
                               }}
                               title="Send WhatsApp Reminder"
                             >
-                              <MessageSquare className="h-4 w-4" />
+                               <MessageSquare className="h-4 w-4" />
                             </Button>
-                          )}
-                          <Button size="sm" variant="outline" onClick={() => openPayDialog(credit)}>
-                            <Plus className="mr-1 h-3 w-3" /> Pay
-                          </Button>
-                          <Link href={`/customers/${credit.customerId}`}>
-                            <Button size="icon" variant="ghost" className="h-8 w-8">
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </Button>
-                          </Link>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
+                           )}
+                           <Button size="sm" variant="outline" onClick={() => openPayDialog(credit)}>
+                             <Plus className="mr-1 h-3 w-3" /> Pay
+                           </Button>
+                           <Link href={`/customers/${credit.customerId}`}>
+                             <Button size="icon" variant="ghost" className="h-8 w-8">
+                               <ExternalLink className="h-3.5 w-3.5" />
+                             </Button>
+                           </Link>
+                         </div>
+                       </TableCell>
+                     </TableRow>
+                   ))
+                 )}
+               </TableBody>
+             </Table>
+           </div>
+         </CardContent>
       </Card>
 
       {/* Payment Dialog */}

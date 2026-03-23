@@ -55,10 +55,10 @@ export default function LoginPage() {
         {/* Brand */}
         <div className="flex flex-col items-center gap-3 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
-            <Image src="/logo.svg" alt="Shree Opticals" width={44} height={44} />
+            <Image src="/logo.svg" alt="Vignesh Medicals" width={44} height={44} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Shree Opticals</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Vignesh Medicals</h1>
             <p className="text-sm text-muted-foreground">Management System</p>
           </div>
         </div>
