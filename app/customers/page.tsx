@@ -4,15 +4,45 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useState } from "react";
 import { format } from "date-fns";
-import { Search, UserPlus, Users } from "lucide-react";
+import { Search, UserPlus, Users, PlusCircle } from "lucide-react";
 import Link from "next/link";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 export default function CustomersPage() {
   const [search, setSearch] = useState("");
+  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [newCustomerEmail, setNewCustomerEmail] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleAddCustomer = async () => {
+    if (!newCustomerName.trim()) return;
+    setIsAdding(true);
+    try {
+      await db.customers.add({
+        id: crypto.randomUUID(),
+        name: newCustomerName.trim(),
+        phone: newCustomerPhone.trim() || undefined,
+        email: newCustomerEmail.trim() || undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        synced: false
+      });
+      setIsAddCustomerOpen(false);
+      setNewCustomerName("");
+      setNewCustomerPhone("");
+      setNewCustomerEmail("");
+    } catch (error) {
+      console.error("Failed to add customer:", error);
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   const customers = useLiveQuery(() =>
     db.customers.orderBy("name").toArray()
@@ -39,12 +69,18 @@ export default function CustomersPage() {
           <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
           <p className="text-muted-foreground">All registered customers and their credit history.</p>
         </div>
-        <Link href="/add-credit">
-          <Button className="gap-2 shrink-0">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2 shrink-0" onClick={() => setIsAddCustomerOpen(true)}>
             <UserPlus className="h-4 w-4" />
-            Add Credit
+            Add Customer
           </Button>
-        </Link>
+          <Link href="/add-credit">
+            <Button className="gap-2 shrink-0">
+              <PlusCircle className="h-4 w-4" />
+              Add Credit
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Summary */}
@@ -163,6 +199,53 @@ export default function CustomersPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isAddCustomerOpen} onOpenChange={setIsAddCustomerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Customer</DialogTitle>
+            <DialogDescription>
+              Create a new customer profile without adding a credit entry.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="name" className="text-sm font-medium">Name</label>
+              <Input
+                id="name"
+                value={newCustomerName}
+                onChange={(e) => setNewCustomerName(e.target.value)}
+                placeholder="Enter customer name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="phone" className="text-sm font-medium">Phone (Optional)</label>
+              <Input
+                id="phone"
+                value={newCustomerPhone}
+                onChange={(e) => setNewCustomerPhone(e.target.value)}
+                placeholder="Enter phone number"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="email" className="text-sm font-medium">Email (Optional)</label>
+              <Input
+                id="email"
+                type="email"
+                value={newCustomerEmail}
+                onChange={(e) => setNewCustomerEmail(e.target.value)}
+                placeholder="Enter email address"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => setIsAddCustomerOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddCustomer} disabled={!newCustomerName.trim() || isAdding}>
+              {isAdding ? "Saving..." : "Save Customer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
