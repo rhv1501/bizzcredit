@@ -295,12 +295,15 @@ export default function CustomerDetailPage() {
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className={`grid gap-4 ${customer.advanceBalance && customer.advanceBalance > 0 ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
         {[
-          { label: "Total Credits", value: credits?.length ?? 0 },
-          { label: "Total Credited", value: `₹${totalCredited.toLocaleString("en-IN")}` },
-          { label: "Total Paid",    value: `₹${totalPaid.toLocaleString("en-IN")}`,    color: "text-emerald-600 dark:text-emerald-400" },
-          { label: "Balance Due",   value: `₹${totalDue.toLocaleString("en-IN")}`,     color: totalDue > 0 ? "text-red-500" : "text-emerald-500" },
+           { label: "Total Credits", value: credits?.length ?? 0 },
+           { label: "Total Credited", value: `₹${totalCredited.toLocaleString("en-IN")}` },
+           { label: "Total Paid",    value: `₹${totalPaid.toLocaleString("en-IN")}`,    color: "text-emerald-600 dark:text-emerald-400" },
+           { label: "Balance Due",   value: `₹${totalDue.toLocaleString("en-IN")}`,     color: totalDue > 0 ? "text-red-500" : "text-emerald-500" },
+           ...(customer.advanceBalance && customer.advanceBalance > 0
+             ? [{ label: "Advance Bal.", value: `₹${customer.advanceBalance.toLocaleString("en-IN")}`, color: "text-emerald-600 dark:text-emerald-400" }]
+             : []),
         ].map(({ label, value, color = "" }) => (
           <Card key={label} className="glass-card hover-lift">
             <CardContent className="pt-6">

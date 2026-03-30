@@ -136,6 +136,16 @@ function AddCreditForm() {
     setCustomerQuery(customer.name);
     setValue("customerName", customer.name);
     setValue("customerPhone", customer.phone || "");
+    
+    // Auto-apply advance balance if any
+    const advance = customer.advanceBalance || 0;
+    if (advance > 0) {
+      if (totalAmount > 0) {
+         setValue("amountPaid", Math.min(advance, totalAmount));
+      } else {
+         setValue("amountPaid", advance); 
+      }
+    }
   };
 
   const handleClearCustomer = () => {
@@ -159,10 +169,23 @@ function AddCreditForm() {
     setIsSubmitting(true);
     try {
       let customerId: string;
+      let leftoverAdvance = 0;
 
       if (selectedCustomer) {
         customerId = selectedCustomer.id;
+        
+        // Compute new advance balance
+        const currentAdvance = selectedCustomer.advanceBalance || 0;
+        let newAdvance = currentAdvance;
+        if (currentAdvance > 0 && values.amountPaid > 0) {
+            // Deduct from advance if we're using it
+            const usedAdvance = Math.min(currentAdvance, values.amountPaid);
+            newAdvance = currentAdvance - usedAdvance;
+            leftoverAdvance = newAdvance;
+        }
+
         await db.customers.update(customerId, {
+          advanceBalance: newAdvance,
           synced: false,
           updatedAt: new Date().toISOString(),
         });
@@ -295,17 +318,25 @@ function AddCreditForm() {
 
             {/* Selected existing customer badge */}
             {selectedCustomer && (
-              <div className="flex items-center gap-3 p-3 rounded-lg border bg-primary/5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm shrink-0">
-                  {selectedCustomer.name.charAt(0).toUpperCase()}
+              <div className="flex flex-col gap-2 p-3 rounded-lg border bg-primary/5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm shrink-0">
+                    {selectedCustomer.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold">{selectedCustomer.name}</p>
+                    <p className="text-xs text-muted-foreground">{selectedCustomer.phone || "No phone"}</p>
+                  </div>
+                  <button type="button" onClick={handleClearCustomer} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold">{selectedCustomer.name}</p>
-                  <p className="text-xs text-muted-foreground">{selectedCustomer.phone || "No phone"}</p>
-                </div>
-                <button type="button" onClick={handleClearCustomer} className="text-muted-foreground hover:text-foreground">
-                  <X className="h-4 w-4" />
-                </button>
+                {selectedCustomer.advanceBalance && selectedCustomer.advanceBalance > 0 && (
+                  <div className="flex items-center justify-between text-xs px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 rounded-md">
+                    <span>Available Advance Balance</span>
+                    <span className="font-bold">₹{selectedCustomer.advanceBalance.toLocaleString("en-IN")}</span>
+                  </div>
+                )}
               </div>
             )}
 

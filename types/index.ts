@@ -17,6 +17,7 @@ export interface Customer {
   createdAt: string;
   updatedAt: string;
   synced?: boolean;
+  advanceBalance?: number;
 }
 
 // A single credit entry for a customer

@@ -165,9 +165,16 @@ export default function CustomersPage() {
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold shrink-0">
                           {customer.name.charAt(0).toUpperCase()}
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold truncate group-hover:text-primary">{customer.name}</p>
-                          <p className="text-xs text-muted-foreground">{customer.phone || "No phone"}</p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex justify-between items-start">
+                            <p className="font-semibold truncate group-hover:text-primary">{customer.name}</p>
+                            {customer.advanceBalance && customer.advanceBalance > 0 && (
+                              <span className="shrink-0 ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                +₹{customer.advanceBalance}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{customer.phone || customer.email || "No details"}</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-center text-xs border-t pt-3">

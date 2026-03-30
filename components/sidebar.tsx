@@ -11,6 +11,7 @@ import { Button } from "./ui/button";
 const navItems = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/add-credit", label: "Add Credit", icon: PlusCircle },
+  { href: "/record-payment", label: "Record Payment", icon: Wallet },
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/records", label: "Credit Records", icon: ClipboardList },
   { href: "/payments", label: "Pending Payments", icon: Wallet },
