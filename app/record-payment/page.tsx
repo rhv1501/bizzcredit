@@ -338,19 +338,26 @@ function RecordPaymentForm() {
 
         {/* ── WhatsApp Toggle ── */}
         {selectedCustomer && (
-          <div className="flex items-center space-x-2 px-1">
-            <Checkbox 
-              id="whatsapp" 
-              checked={sendWhatsapp} 
-              onCheckedChange={(checked) => setSendWhatsapp(!!checked)} 
-              disabled={!selectedCustomer.phone}
-            />
-            <label
-              htmlFor="whatsapp"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Send WhatsApp Receipt to Customer
-            </label>
+          <div className="flex flex-col gap-1 px-1">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="whatsapp" 
+                checked={sendWhatsapp} 
+                onCheckedChange={(checked) => setSendWhatsapp(!!checked)} 
+                disabled={!selectedCustomer.phone}
+              />
+              <label
+                htmlFor="whatsapp"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Send WhatsApp Receipt to Customer
+              </label>
+            </div>
+            {!selectedCustomer.phone && (
+              <p className="text-xs text-muted-foreground pl-6">
+                No phone number saved for this customer. <a href={`/customers/${selectedCustomer.id}`} className="underline hover:text-foreground">Edit profile</a> to add one.
+              </p>
+            )}
           </div>
         )}
 
