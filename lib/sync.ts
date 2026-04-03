@@ -13,9 +13,18 @@ export async function syncToSheets(): Promise<{ synced: number }> {
 
   const unsyncedSales = allSales.filter((s) => s.synced === false);
 
-  const unsyncedCustomerIds = new Set(unsyncedSales.map((s) => s.customerId));
+  // Get unsynced customers: those linked to unsynced sales OR marked as not synced
+  const unsyncedCustomerIdsFromSales = new Set(unsyncedSales.map((s) => s.customerId));
+  const unsyncedCustomersStandalone = allCustomers.filter((c) => c.synced === false);
+  
+  // Combine both: standalone unsynced + those linked to unsynced sales
+  const allUnsyncedCustomerIds = new Set([
+    ...unsyncedCustomerIdsFromSales,
+    ...unsyncedCustomersStandalone.map((c) => c.id),
+  ]);
+  
   const unsyncedCustomers = allCustomers.filter((c) =>
-    unsyncedCustomerIds.has(c.id)
+    allUnsyncedCustomerIds.has(c.id)
   );
 
   const deletedCustomerIds = allDeleted.filter(d => d.type === 'customer').map(d => d.id);
@@ -44,6 +53,11 @@ export async function syncToSheets(): Promise<{ synced: number }> {
       await db.sales.update(sale.id, { synced: true });
     }
 
+    // Mark pushed customers as synced (both standalone and those linked to sales)
+    for (const customer of unsyncedCustomers) {
+      await db.customers.update(customer.id, { synced: true });
+    }
+
     // Clear pushed deletions
     if (allDeleted.length > 0) {
       await db.deletedSyncs.bulkDelete(allDeleted.map(d => d.id));
@@ -54,7 +68,7 @@ export async function syncToSheets(): Promise<{ synced: number }> {
       const pulledCustomerIds = new Set(data.pulledCustomers.map((c: any) => c.id));
       for (const localCust of allCustomers) {
         // Safe to delete if it's missing from sheets AND is not unsynced locally right now
-        if (!pulledCustomerIds.has(localCust.id) && !unsyncedCustomerIds.has(localCust.id)) {
+        if (!pulledCustomerIds.has(localCust.id) && !allUnsyncedCustomerIds.has(localCust.id)) {
           await db.customers.delete(localCust.id);
         }
       }

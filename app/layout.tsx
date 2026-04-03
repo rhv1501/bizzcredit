@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
 import { AppLayout } from "@/components/app-layout";
-import { Toaster } from "@/components/ui/sonner";
-import { AutoSync } from "@/components/auto-sync";
+import { ClientProviders } from "@/components/providers";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -13,7 +11,8 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "BizzCredit - Credit Tracking",
-  description: "Offline-first credit tracking app for businesses. Record credits and track payments.",
+  description:
+    "Offline-first credit tracking app for businesses. Record credits and track payments.",
   manifest: "/manifest.json",
   icons: {
     icon: "/logo.svg",
@@ -41,16 +40,9 @@ export default function RootLayout({
       className={`${jakarta.variable} font-sans h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <ClientProviders>
           <AppLayout>{children}</AppLayout>
-          <Toaster />
-          <AutoSync />
-        </ThemeProvider>
+        </ClientProviders>
       </body>
     </html>
   );

@@ -1,14 +1,30 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import { Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, LogOut } from "lucide-react";
-import { ModeToggle } from "./mode-toggle";
+import {
+  Menu,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  CheckCircle2,
+  LogOut,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { useStore } from "@/store/useStore";
 import { cn } from "@/lib/utils";
 import { syncToSheets } from "@/lib/sync";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+
+// Dynamically import ModeToggle to reduce initial bundle size
+const ModeToggle = dynamic(
+  () => import("./mode-toggle").then((mod) => ({ default: mod.ModeToggle })),
+  {
+    ssr: false,
+    loading: () => <div className="h-8 w-8" />,
+  },
+);
 
 export function Topbar() {
   const { setSidebarOpen, isOnline, setIsOnline } = useStore();
@@ -49,7 +65,7 @@ export function Topbar() {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setIsOnline]);
 
   const runSync = async ({
@@ -67,7 +83,7 @@ export function Topbar() {
         toast.success(
           isAutoSync
             ? `🔄 Back online — auto-synced ${synced} record(s) to Google Sheets!`
-            : `✓ Synced ${synced} record(s) to Google Sheets!`
+            : `✓ Synced ${synced} record(s) to Google Sheets!`,
         );
       }
     } catch (err: any) {
@@ -80,7 +96,9 @@ export function Topbar() {
 
   const handleManualSync = () => {
     if (!isOnline) {
-      toast.error("You're offline. Records will sync automatically when reconnected.");
+      toast.error(
+        "You're offline. Records will sync automatically when reconnected.",
+      );
       return;
     }
     runSync();
@@ -90,7 +108,11 @@ export function Topbar() {
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:justify-end md:px-6">
       {/* Mobile hamburger */}
       <div className="flex items-center md:hidden">
-        <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSidebarOpen(true)}
+        >
           <Menu className="h-5 w-5" />
           <span className="sr-only">Toggle menu</span>
         </Button>
@@ -101,7 +123,11 @@ export function Topbar() {
         {lastSynced && isOnline && (
           <span className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
             <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-            Synced {lastSynced.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            Synced{" "}
+            {lastSynced.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </span>
         )}
 
@@ -113,7 +139,9 @@ export function Topbar() {
           disabled={isSyncing}
           className="h-8 gap-1.5 hidden sm:flex"
         >
-          <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
+          <RefreshCw
+            className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")}
+          />
           <span>{isSyncing ? "Syncing…" : "Sync"}</span>
         </Button>
 
@@ -123,7 +151,7 @@ export function Topbar() {
             "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border",
             isOnline
               ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
-              : "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20"
+              : "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
           )}
         >
           {isOnline ? (
